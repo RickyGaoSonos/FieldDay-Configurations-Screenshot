@@ -1,0 +1,24 @@
+.IP, #IP{
+  font:Verdana, Geneva, sans-serif;
+  font-family: Verdana, Geneva, sans-serif;
+  font-size:13px;
+  text-align:center;
+  text-color: black;
+}
+
+button.testing {
+  font:Verdana, Geneva, sans-serif;
+  font-family: Verdana, Geneva, sans-serif;
+  background: #d3d3d3;
+  background-image: -webkit-linear-gradient(top, #d3d3d3, #909090);
+  -webkit-border-radius: 3;
+  border-radius: 5px;
+  color: #000000;
+  font-size: 14px;
+  padding: 5px 15px 5px 15px;
+  text-decoration: none;
+}
+
+td {
+  font-size: 12px;
+}

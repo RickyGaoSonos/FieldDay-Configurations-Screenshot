@@ -1,0 +1,106 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+          "http://www.w3.org/TR/html4/strict.dtd">
+
+<html>
+
+<head>
+  <title>Field Day Auto Config & Testing Tool</title>
+
+  <link type="text/css" rel="stylesheet" href="css/sonos.css" />
+  <link type="text/css" rel="stylesheet" href="css/testing.css" />
+
+  <script src="js/js-from-FD-2.0.2RTF/bsp.js"></script>
+  <script src="js/js-from-FD-2.0.2RTF/Quick Configuration.js"></script>
+  <script src="js/js-from-FD-2.0.2RTF/index.js"></script>
+  <script src="js/jquery-3.2.0.min.js" type="text/javascript"></script>
+  <script src="js/presetup.js"></script>
+  <script src="js/start.js"></script>
+  <script src="js/seleniumInterfaces.js"></script>
+  <script src="js/allActions.js"></script>
+
+  <style>
+    table.quick {
+      border-collapse: separate;
+      width: 50% !important;
+      height: 50% !important;
+    }
+
+    table.quick tr {
+      line-height: 100%;
+    }
+
+    table.quick tr.init {
+      line-height: 100%;
+    }
+
+    table.quick th {
+      vertical-align: top;
+      text-align: left;
+      font-size: 15px;
+    }
+
+    table.quick td {
+      vertical-align: top;
+      white-space: nowrap;
+    }
+
+    table.lang tr {
+      line-height: 150%;
+    }
+
+    table.lang {
+      border: 0px;
+    }
+
+    td#players {
+      line-height: 240%
+    }
+
+    #quickSubmit {
+      margin-top: -7px;
+    }
+
+    #exclusion-list {
+      line-height: 150%;
+      vertical-align: bottom;
+    }
+  </style>
+</head>
+
+<body>
+  <div style="text-align:center height:60%">
+    <center>
+      <div id="logo" style="margin-top: -30px;"><img src="logo.jpg"></div>
+    </center>
+    <div id="header" style="margin-top: -20px; font-size:26px">Auto Config & ScreenShot Tool v1.0<span id="version"></span></div>
+    <div id="IP" style="margin-top: -20px;font-size:18px;font-weight: bold;">
+      IP Address: <input style="font-size:18px;font-weight: bold;" type="text" name="IP address" id="IPText">
+      <button type="submit" class="testing" id="findFD">Find Field Day</button>
+      <div id="waitReboot" style="margin-top: 50px;font-size: 150%">BrigtSign rebooting ... the tool will automatically refresh</div>
+    </div>
+
+    <!-- <div id="fieldday" style="display: none;"> -->
+    <div id="testingFielddayInfo"></div>
+
+    <div id="testingfunctions" style="margin-top: -20px; margin-bottom: 40px">
+      <center>
+        <button type="submit" class="testing" id="changesetting">Change Settings</button>
+        <button type="submit" class="testing" id="getpictures">Get Pictures</button>
+      </center>
+      <br>
+      <center>
+        <div id="TestingInfo"></div>
+      </center>
+    </div>
+
+    <div align="center" id='testingConfigSection' class="varform form" style="margin-top: -20px;">
+      <!-- From Field Day Source Code -->
+      <div id="quickConfigContainer">
+      </div>
+      <!-- From Field Day Source Code -->
+    </div>
+    <br>
+  </div>
+</body>
+
+</html>

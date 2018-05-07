@@ -1,0 +1,106 @@
+body{
+  background-color:white;
+  background-size: auto;
+  font:Verdana, Geneva, sans-serif;
+  font-family: Verdana, Geneva, sans-serif;
+  overflow-y: scroll;
+}
+
+.bs_input{
+  width:200px;
+  font:Verdana, Geneva, sans-serif;
+  font-family: Verdana, Geneva, sans-serif;
+  font-size:16px;
+  color: rgba(0,0,0,1);
+}
+
+.bs_uservariable{
+  font:Verdana, Geneva, sans-serif;
+  font-family: Verdana, Geneva, sans-serif;
+  font-size:16px;  
+}
+
+.form {
+  margin: 0 auto;
+  width: 1000px;
+}
+
+.header, #header{
+  font:Verdana, Geneva, sans-serif;
+  font-family: Verdana, Geneva, sans-serif;
+  font-size:36px;
+  text-align:center;
+  text-color: black;
+  padding-bottom:2%;
+}
+
+button.control {
+  font:Verdana, Geneva, sans-serif;
+  font-family: Verdana, Geneva, sans-serif;
+  background: #d3d3d3;
+  background-image: -webkit-linear-gradient(top, #d3d3d3, #909090);
+  -webkit-border-radius: 6;
+  border-radius: 6px;
+  color: #000000;
+  font-size: 20px;
+  padding: 10px 20px 10px 20px;
+  text-decoration: none;
+}
+button.control:disabled, a.disabled {
+  opacity: 0.33;
+}
+
+table, th, td {
+  border: 1px solid black;
+  font:Verdana, Geneva, sans-serif;
+  font-family: Verdana, Geneva, sans-serif;
+}
+.edit table, th, td {
+  border: 0px;
+  font:Verdana, Geneva, sans-serif;
+  font-family: Verdana, Geneva, sans-serif;
+}
+.editDesc {
+  width:500px;
+}
+.shell table, th, td {
+  border: 0px;
+  font:Verdana, Geneva, sans-serif;
+  font-family: Verdana, Geneva, sans-serif;
+}
+.shellLabel {
+  font-weight: bold;
+  vertical-align: text-top;
+  padding-top: 6px;
+}
+tr.border td {
+  height: 0px;
+  border-bottom: 1pt solid black;
+}
+
+hr {
+  width:90%;
+}
+
+.ui-keyboard {
+  border-radius: 0;
+  left: 0;
+  top: auto;
+  bottom: 0;
+  position: fixed;
+  width: 100%;
+  background: lightgrey;
+  font-style: bold;
+  font-size: 16px;
+}
+
+.ui-keyboard-button {
+  height: 4em;
+  width: 6em;
+  margin: .2em;
+  cursor: pointer;
+}
+
+.ui-keyboard-space {
+  width: 300px;
+}

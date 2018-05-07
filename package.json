@@ -1,0 +1,11 @@
+{
+  "name": "Auto Config & ScreenShot Tool v1.0",
+  "version": "1.0.0",
+  "description": "An automated testing tool for Field Day system",
+  "main": "index.html",
+  "window": {
+    "toolbar": true,
+    "width": 1500,
+    "height": 900
+  }
+}
