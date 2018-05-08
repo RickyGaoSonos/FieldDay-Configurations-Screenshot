@@ -1,3 +1,6 @@
+//http://10.96.1.44:8008/experience/events/interface/backDoor?command=sonos!sall!disableplayermanagement
+//http://10.96.1.44:8008/experience/events/interface/backDoor?command=sonos!sall!factoryreset
+
 "use strict";
 
 var webdriver = require("selenium-webdriver"),
@@ -135,7 +138,7 @@ function initialize() {
   });
 
   $('#getpictures').click(function() {
-    GetAllPictures(0);
+    GetAllPictures(5);
   });
 
   function hideChangeSettingSection() {
@@ -163,13 +166,13 @@ function RetrieveAllSettings() {
           fixtures[j].click();
           var displays = $('#display').find('input[type=radio]');
           for (var k = 0; k < displays.length; k++) {
-            if (displays[k].id != 'SimpleDemo') {
+            if (displays[k].id != 'SimpleDemo' && displays[k].id != 'NoTouchscreen') {
               displays[k].click();
-              var players = $('#players').find('input[type=radio]');
+              var players = $('#player').find('input[type=radio]');
               for (var l = 0; l < players.length; l++) {
                 players[l].click();
                 if (fixtures[j].id != 'AIO') {
-                  var exclusions = $('#exclusions').find('input[type=radio]');
+                  var exclusions = $('#exclusion').find('input[type=radio]');
                   for (var m = 0; m < exclusions.length; m++) {
                     exclusions[m].click();
                     allSettings.push(getSettings());
@@ -190,6 +193,7 @@ function RetrieveAllSettings() {
 }
 
 function GetAllPictures(index) {
+  console.log(index);
   $('#TestingInfo').html('Turn off BrightSign Auto Sign');
   TureOffBrightSignAutoSign();
 
@@ -198,21 +202,22 @@ function GetAllPictures(index) {
       $('#TestingInfo').html('Factory Reset Players');
       FactoryResetAllPlayers();
 
-      delay(35000)
+      delay(40000)
         .then(() => {
           $('#TestingInfo').html('Input New Setting ' + displaySettings[index]);
           InputNewSetting(allSettings[index]);
 
-          delay(60000 * 2)
+          delay(50000 * 3)
             .then(() => {
               $('#TestingInfo').html('Get ScreenShots');
               GetScreenShots(index);
 
-              if (index < 4) {
-                delay(45000)
+              if (index < 49) {
+                delay(70000)
                   .then(() => {
                     $('#TestingInfo').html('Change to Next');
-                    GetAllPictures(index++)
+                    var next_index = index + 1;
+                    GetAllPictures(next_index)
                   });
               }
             });
@@ -248,9 +253,10 @@ function InputNewSetting(current_setting) {
       }
     })
     .then(function(response) {
-      Console.log("Succes!");
-      Console.log(current_setting);
-
+      console.log("Succes!");
+      console.log(current_setting);
+      $('#TestingInfo').html('Rebooting');
+      Reboot();
       // document.getElementById("findFD").disabled = true;
       // document.getElementById("IPText").disabled = true;
 
@@ -261,33 +267,39 @@ function InputNewSetting(current_setting) {
       // $('#testingfunctions').hide();
       // $('#testingFielddayInfo').html('');
 
-      Reboot();
-      $('#TestingInfo').html('Rebooting');
-      var tcpp = require('tcp-ping');
 
-      var refreshId = setInterval(function() {
-        tcpp.probe(testIP, 8008, function(err, available) {
-          if (available) {
-            $('#TestingInfo').html('Reboot Complete');
-
-            clearInterval(refreshId);
-          }
-        });
-      }, 2000);
+      // var tcpp = require('tcp-ping');
+      //
+      // var refreshId = setInterval(function() {
+      //   tcpp.probe(testIP, 8008, function(err, available) {
+      //     if (available) {
+      //       $('#TestingInfo').html('Reboot Complete');
+      //
+      //       clearInterval(refreshId);
+      //     }
+      //   });
+      // }, 2000);
     })
     .catch(function(error) {
-      alert("Change Setting Failed!")
+      //alert("Change Setting Failed!")
       console.log(error.statusCode);
       console.log(error.body);
       console.log(error);
     });
+
+    // delay(5000)
+    //   .then(() => {
+    //   Reboot();
+    // });
+
 }
 
 function GetScreenShots(index) {
-  if (driver == null || testconsole == null) {
+  //if (driver == null || testconsole == null) {
+    console.log("Create Driver");
     driver = createDriver();
     testconsole = findConsole(driver);
-  }
+  //}
 
   delay(8000)
     .then(() => {
