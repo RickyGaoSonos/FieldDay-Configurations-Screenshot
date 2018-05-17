@@ -25,8 +25,11 @@ function doSetup(password, forceToQuick, extraArgs) {
   if (password === 'stat') {
     url = 'http://localhost:8008/BootStatus.html';
   }
-  else if (forceToQuick || password === atob('aXdhbnQycmVjb25maWc=')) {
+  else if (forceToQuick) {
     url = url + '?setup=Quick' + (extraArgs || '');
+  }
+  else if (password === atob('aXdhbnQycmVjb25maWc=')) {
+    url = url + '?setup=Menu' + (extraArgs || '');
   }
   else if (password === atob('aXdhbnQyaGlqYWNr')) {
     url = `http://sonos:${atob('c29ub3Nyb2NrcyE=')}@localhost:8008/Firmware.html?setup=RDM`;

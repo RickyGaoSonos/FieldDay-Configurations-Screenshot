@@ -26,6 +26,12 @@ var QuickConfig = {
                 SpeakerModel: 'AIO.15O',
               },
             },
+            'SonosOne' : {
+              values: {
+                ExRModel: 'AIO',
+                SpeakerModel: 'AIO.O',
+              },
+            },
           },
         },
         'No Touchscreen' : {
@@ -34,13 +40,6 @@ var QuickConfig = {
               values: {
                 ExRModel: 'AIO',
                 SpeakerModel: 'AIO.15O',
-                collateralDefinition: 'LT',
-              },
-            },
-            'SonosOne' : {
-              values: {
-                ExRModel: 'AIO',
-                SpeakerModel: 'AIO.O',
                 collateralDefinition: 'LT',
               },
             },

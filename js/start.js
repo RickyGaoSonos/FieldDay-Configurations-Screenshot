@@ -25,11 +25,23 @@ var devices = new Array;
 var allSettings = [];
 var displaySettings = [];
 
-window.onload = function() {
+var Device = {
+  createNew: function(ip, name, zone, seversion, hdversion, rdm) {
+    var device = {};
+    device.ip = ip;
+    device.name = name;
+    device.zone = zone;
+    device.seversion = seversion;
+    device.hdversion = hdversion;
+    device.retailMode = rdm;
+    return device;
+  }
+};
 
+window.onload = function() {
   document.getElementById('IPText').value = BrightSignIP;
   initialize();
-
+  //FactoryResetAllPlayersWithinNetwork();
 };
 
 window.onunload = function() {
@@ -133,12 +145,29 @@ function initialize() {
     RetrieveAllSettings();
     delay(2000)
       .then(() => {
-        $('#TestingInfo').html('Retrived: ' + allSettings.length + ' settings');
+        $('#TestingInfo').html('Retrieved: ' + allSettings.length + ' settings');
       });
   });
 
   $('#getpictures').click(function() {
-    GetAllPictures(5);
+    GetAllPictures(511);
+  });
+
+  $('#changesettingonetime').click(function() {
+    $('#TestingInfo').html('Input New Setting ' + getSettings());
+    InputNewSetting(getSettings());
+
+    delay(4000)
+      .then(() => {
+        $('#TestingInfo').html('Turn off BrightSign Auto Sign');
+        TureOffBrightSignAutoSignwithDLI();
+
+        delay(2000)
+          .then(() => {
+            $('#TestingInfo').html('Factory Reset Players');
+            FactoryResetAllPlayersWithinNetwork();
+          });
+      });
   });
 
   function hideChangeSettingSection() {
@@ -190,29 +219,33 @@ function RetrieveAllSettings() {
       }
     }
   }
+
+  // for(var i = 0; i < displaySettings.length; i++){
+  //   console.log(displaySettings[i]);
+  // }
 }
 
 function GetAllPictures(index) {
   console.log(index);
-  $('#TestingInfo').html('Turn off BrightSign Auto Sign');
-  TureOffBrightSignAutoSign();
+  $('#TestingInfo').html('Input New Setting ' + displaySettings[index]);
+  InputNewSetting(allSettings[index]);
 
-  delay(3000)
+  delay(4000)
     .then(() => {
-      $('#TestingInfo').html('Factory Reset Players');
-      FactoryResetAllPlayers();
+      $('#TestingInfo').html('Turn off BrightSign Auto Sign');
+      TureOffBrightSignAutoSignwithDLI();
 
-      delay(40000)
+      delay(2000)
         .then(() => {
-          $('#TestingInfo').html('Input New Setting ' + displaySettings[index]);
-          InputNewSetting(allSettings[index]);
+          $('#TestingInfo').html('Factory Reset Players');
+          FactoryResetAllPlayersWithinNetwork();
 
-          delay(50000 * 3)
+          delay(55000 * 3)
             .then(() => {
               $('#TestingInfo').html('Get ScreenShots');
               GetScreenShots(index);
 
-              if (index < 49) {
+              if (index < 722) {
                 delay(70000)
                   .then(() => {
                     $('#TestingInfo').html('Change to Next');
@@ -230,9 +263,112 @@ function TureOffBrightSignAutoSign() {
   request("http://" + testIP + ":8008/experience/events/interface/backDoor?command=sonos!sall!disableplayermanagement");
 }
 
+function TureOffBrightSignAutoSignwithDLI() {
+  var util = require('util');
+  var exec = require('child_process').exec;
+
+  var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?1=CCL"
+
+  var child = exec(command, function(error, stdout, stderr) {
+    if (error !== null) {
+      console.log('exec error: ' + error);
+    }
+  });
+}
+
 function FactoryResetAllPlayers() {
   var request = require("request");
   request("http://" + testIP + ":8008/experience/events/interface/backDoor?command=sonos!sall!factoryreset");
+}
+
+function FactoryResetAllPlayersWithinNetwork() {
+  var request = require("request");
+  var devices = [];
+  var sonos = require('./node-sonos/index')
+
+  var TIMEOUT = 2500; // Search for 2 seconds, increase this value if not all devices are shown
+
+  sonos.DeviceDiscovery({
+    timeout: 2000
+  }, function(device) {
+    var ip = '';
+    var name = '';
+    var zone = '';
+    var seversion = '';
+    var hdversion = '';
+    var rdm = '';
+
+    device.getZoneInfo()
+      .catch(function(err) {
+        console.log(err);
+      })
+      .then((value) => {
+        ip = value.IPAddress;
+        seversion = value.SoftwareVersion;
+        hdversion = value.HardwareVersion;
+
+        device.getZoneAttrs()
+          .catch(function(err) {
+            console.log(err);
+          })
+          .then((value) => {
+            zone = value.CurrentZoneName;
+
+            device.deviceDescription()
+              .catch(function(err) {
+                console.log(err);
+              })
+              .then((value) => {
+                name = value.modelName;
+                rdm = value.retailMode;
+
+                var device_x = Device.createNew(ip, name, zone, seversion, hdversion, rdm);
+                devices.push(device_x);
+              });
+          });
+      });
+  });
+
+  setTimeout(function() {
+    for (var i = 0; i < devices.length; i++) {
+      if (devices[i].retailMode == 3) {
+        FactoryReset(devices[i].ip);
+      }
+    }
+  }, 5000);
+}
+
+function FactoryReset(ip) {
+  var Token = '';
+  var request = require("request");
+  var options = {
+    url: 'http://' + ip + ':1400/reboot?reset=yes',
+    method: 'GET',
+  };
+
+  request(options, function(error, response, body) {
+    if (!error && response.statusCode == 200) {
+      Token = body.match(/value="(\S*)"/)[1];
+
+      var options = {
+        url: 'http://' + ip + ':1400/reset',
+        method: 'POST',
+        form: {
+          'csrfToken': Token
+        }
+      };
+
+      request(options, function(error, response, body) {
+        if (!error && response.statusCode == 200) {
+          console.log(ip + " Rebooting");
+        } else {
+          console.log(response.body + "\n" + response.statusCode);
+        }
+      });
+    } else {
+      console.log(response.body + "\n" + response.statusCode);
+    }
+  });
 }
 
 function InputNewSetting(current_setting) {
@@ -255,8 +391,8 @@ function InputNewSetting(current_setting) {
     .then(function(response) {
       console.log("Succes!");
       console.log(current_setting);
-      $('#TestingInfo').html('Rebooting');
-      Reboot();
+      //$('#TestingInfo').html('Rebooting');
+      //Reboot();
       // document.getElementById("findFD").disabled = true;
       // document.getElementById("IPText").disabled = true;
 
@@ -287,18 +423,18 @@ function InputNewSetting(current_setting) {
       console.log(error);
     });
 
-    // delay(5000)
-    //   .then(() => {
-    //   Reboot();
-    // });
+  // delay(5000)
+  //   .then(() => {
+  //   Reboot();
+  // });
 
 }
 
 function GetScreenShots(index) {
   //if (driver == null || testconsole == null) {
-    console.log("Create Driver");
-    driver = createDriver();
-    testconsole = findConsole(driver);
+  console.log("Create Driver");
+  driver = createDriver();
+  testconsole = findConsole(driver);
   //}
 
   delay(8000)

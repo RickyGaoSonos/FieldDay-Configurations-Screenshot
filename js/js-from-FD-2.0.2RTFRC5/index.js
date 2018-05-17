@@ -54,6 +54,18 @@ function doGetConfigVars(timeout) {
   setTimeout(function() { efficientGetUserVars(doUserVars, host); }, timeout);
 }
 
+function getMethodFromBrightSign(getUrl, successCallback, completeCallback, dataType) {
+  $.ajax({
+    url: '/experience/events/interface/' + getUrl,
+    dataType: dataType || 'html',
+    success: successCallback,
+    error: (function(jqHXR, textStatus, errorThrown) {
+      alert(`Get BrightSign vars failed: ${textStatus}`);
+    }),
+    complete: completeCallback,
+  });
+}
+
 $(document).ready(function() {
   if (IsRunningOnBrightSign) setTimeout(initializeBrightSignCommunications, 250);
   doGetConfigVars(2000);
@@ -69,9 +81,7 @@ function htmlEscape(str) {
 }
 
 function doReboot(button, delay) {
-  button.innerText = 'Please wait...';
-  button.disabled = true;
-  $('#submit').prop('disabled', true);
+  $('.control').prop('disabled', true).html('Please wait...');
   setTimeout(function() {
     window.location.href='/experience/events/interface/reboot';
   }, delay || 100);
@@ -87,22 +97,23 @@ function doSubmit(event) {
 };
 
 function doUserVars(us) {
-  UserVars = us;
-
-  if (typeof us === 'undefined')
+  if (!us)
   {
     console.log("userVars not defined");
     doGetConfigVars(1000);
     return;
   }
+  UserVars = us;
 
   IsSimpleDemo = (IsRunningOnBrightSign && us.simpleDemoButtonSetup === 'true');
   IsSimpleDemo = (IsSimpleDemo || Query.simple === 'true');
   const quick = (Query.setup === 'Quick' || Query.setup === 'Local' ||
                  us.ExRModel === '' && Query.setup !== 'Full');
+  const menu = (Query.setup === 'Menu');
+  const tune = (Query.setup === 'Tune');
 
   if (!IsSimpleDemo) {
-    displayQRData(us, quick);
+    displayQRData(us, quick || menu || tune);
   } else {
     $('#QRCodes').hide();
   }
@@ -112,9 +123,15 @@ function doUserVars(us) {
     $('#longConfig, #wait').html('');
   } else if (quick) {
     quickConfig(us);
+  } else if (menu) {
+    menuConfig(us);
   }
   else {
-    normalConfig(us);
+    if (tune) {
+      tuneConfig(us);
+    } else {
+      normalConfig(us);
+    }
 
     if (IsRunningOnBrightSign) {
       $('input').keyboard({
@@ -145,6 +162,222 @@ function doUserVars(us) {
       });
     }
   }
+}
+
+function buildMenuScaffolding(jqSelector) {
+  $(jqSelector).html(`
+<style>
+.menu-button {
+  display: block;
+  width: 140px;
+  height: 50px;
+  background: silver;
+  margin: 15px;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 110%;
+}
+table.statusTable td {
+  padding-left: 5px;
+  padding-right: 5px;
+}
+</style>
+    <div id="quickMenu" style="display: none; width=800px;">
+        <table style="width: 960px; class="menu">
+            <tr>
+              <td width="10%"><button id="button-reconfig" class="menu-button"></a>Reconfigure</td>
+              <td width="40%">Reconfigure this system</td>
+              <td width="10%"><button id="button-tuning" class="menu-button"></a>Tuning</td>
+              <td width="40%">Change collateral or default volume</td>
+            </tr>
+            <tr>
+              <td><button id="button-data" class="menu-button" disabled="disabled"></a>Data</td>
+              <td>Data gathering</td>
+              <td><button id="button-reboot" class="menu-button"></a>Reboot</td>
+              <td>Reboot this display</td>
+            </tr>
+            <tr>
+              <td><button id="button-reset" class="menu-button" disabled="disabled"></a>Reset</td>
+              <td>Factory reset Sonos players</td>
+              <td>
+                  <button id="button-hijack" class="menu-button" disabled="disabled"></a>Hijack
+                  <span class="hijackOn" style="display:none">On</span>
+                  <span class="hijackOff"style="display:none">Off</span>
+              </td>
+              <td>
+                  <span class="hijackOn">Prepare for Hijack Mode</span>
+                  <span class="hijackOff" style="display:none">Remove Hijack Mode</span>
+              </td>
+            </tr>
+            <tr id="firmware">
+              <td><button id="button-firmware" class="menu-button"></a>Firmware</td>
+              <td>Use the Sonos firmware utility</td>
+            </tr>
+        </table>
+       <br>
+       <table id="variablesTable" class="statusTable">
+       </table>
+       <br>
+       <table id="firmwareTable" class="statusTable">
+         <tr>
+           <th id="topoStatus">Please wait...</th>
+         </tr>
+       </table>
+    </div>
+`);
+}
+
+function getTopology() {
+  getMethodFromBrightSign('sonosData', function (data, textStatus, jqXHR) {
+    processTopology(data);
+  }, function(jqXHR, textStatus) {
+    renewTopology();
+  },'json');
+}
+
+var Timer;
+
+function renewTopology() {
+  clearTimeout(Timer);
+  Timer = setTimeout(function() {
+    getTopology();
+  }, 2000);
+}
+
+var initialSonosEnableDone;
+
+function processTopology(data) {
+  if (!data.complete) {
+    $('#button-data, #button-reset, #button-hijack').attr('disabled', 'disabled');
+  } else if (!initialSonosEnableDone) {
+    $('#button-data, #button-reset, #button-hijack').removeAttr('disabled');
+    initialSonosEnableDone = true;
+  }
+
+  if (data.complete) $('#setup').hide();
+  if (!data.devices) {
+    $('#topoStatus').html('Sonos device discovery was not started');
+    return;
+  }
+
+  const $firmwareTable = $('#firmwareTable');
+  let row = '<tr><th>Zone</th><th>Device</th><th>IP</th><th>HHID</th><th>Firmware</th></tr>';
+  $firmwareTable.html(row);
+
+  for (let deviceName in data.devices) {
+    const device = data.devices[deviceName];
+    const modelActual = device.modelactual;
+    const swVersion = device.softwareversion;
+    const zone = device.zone.toUpperCase();
+    const hhid = device.hhid;
+    const ip = device.baseurl.replace('http://', '').replace(':1400', '');
+
+    row = '<tr class="border"><td colspan="5"></td></tr>';
+    row += `<tr><td>${zone}</td><td>${modelActual}</td><td>${ip}</td>` +
+           `<td>${hhid}</td><td>${swVersion}</td></tr>`;
+    $firmwareTable.append(row);
+  }
+  row = '<tr class="border"><td colspan="5"></td></tr>';
+  $firmwareTable.append(row);
+}
+
+function menuConfig(us) {
+  buildMenuScaffolding('#quickConfigContainer');
+  $('#version').text(us.presentationversion || us.presentationVersion);
+  $('#longConfig').html('');
+  $('#wait').html('');
+  $('#quickMenu').show();
+  $('.unhideBaseQR').show();
+  $('.varform').css('width', '100%');
+
+  getMethodFromBrightSign('backDoor?command=sonos!sall!disableplayermanagement', function() {
+    getTopology();
+  });
+
+  let debug = {};
+  try {
+    debug = JSON.parse(us.debugPrint);
+  } catch (ex) {
+    console.log('Could not parse debugPrint options');
+  }
+  const firmware = debug.firmware;
+  if (!firmware) $('tr#firmware').hide();
+
+  const rdmMode = ((us.RDMMode || us.rdmmode) === 'yes');
+  $('.hijackOn').toggle(rdmMode);
+  $('.hijackOff').toggle(!rdmMode);
+
+  $('#quickConfigContainer').on('click', '#button-reconfig', function() {
+    $('.menu-button').attr('disabled', 'disabled');
+    window.location.href = document.location.href.replace('Menu', 'Quick');
+  });
+  $('#quickConfigContainer').on('click', '#button-tuning', function() {
+    $('.menu-button').attr('disabled', 'disabled');
+    window.location.href = document.location.href.replace('Menu', 'Tune');
+  });
+  $('#quickConfigContainer').on('click', '#button-data', function() {
+    $('.menu-button').attr('disabled', 'disabled');
+    window.location.href = '/BootStatus.html';
+  });
+  $('#quickConfigContainer').on('click', '#button-reboot', function() {
+    $('.menu-button').attr('disabled', 'disabled');
+    setTimeout(function() {
+      window.location.href = '/experience/events/interface/reboot';
+    },100);
+  });
+  $('#quickConfigContainer').on('click', '#button-reset', function() {
+    $('.menu-button').attr('disabled', 'disabled');
+    const url = 'backDoor?command=sonos!sall!disablehouseholdmanagement';
+    getMethodFromBrightSign(url, function() {
+      const url = 'backDoor?command=sonos!sall!factoryreset';
+      getMethodFromBrightSign(url, function() {
+        $('#button-reboot').removeAttr('disabled');
+      });
+    });
+  });
+  $('#quickConfigContainer').on('click', '#button-hijack', function() {
+    $('.menu-button').attr('disabled', 'disabled');
+    const url = 'toggleRDM';
+    getMethodFromBrightSign(url, function() {
+      $('#button-reboot').removeAttr('disabled');
+    });
+  });
+  $('#quickConfigContainer').on('click', '#button-firmware', function() {
+    $('.menu-button').attr('disabled', 'disabled');
+    window.location.href = '/Firmware.html';
+  });
+
+  $('.unhideBaseQR').click(function() {
+    $('#QRCodes').show();
+    $('.unhideBaseQR').hide();
+    setTimeout(function() {
+      $('html,body').scrollTop($(document).height());
+    }, 100);
+  });
+
+  const varRowSep = '<tr class="border"><td colspan="2"></td></tr>';
+  const addBSVariable = function ($table, us, varName) {
+    const val = (us[varName] || us[varName.toLowerCase()] || '');
+    $table.append(`${varRowSep}<tr><td>${varName}</td><td>${val}</td></tr>}`);
+  };
+
+  setTimeout(function() {
+    const $variablesTable = $('#variablesTable');
+    let row = varRowSep;
+    if (!initialSonosEnableDone) {
+      row += '<tr><td colspan="2" style="color:red;">Sonos device discovery is not yet complete.</td></tr>';
+      $variablesTable.html(row);
+    } else {
+      $variablesTable.html('');
+    }
+
+    addBSVariable($variablesTable, us, 'brightSignIP');
+    addBSVariable($variablesTable, us, 'firmwareVersion');
+    addBSVariable($variablesTable, us, 'activePresentation');
+    addBSVariable($variablesTable, us, 'ExRModel');
+    addBSVariable($variablesTable, us, 'SpeakerModel');
+    $variablesTable.append(varRowSep);
+  }, 100);
 }
 
 function buildQuickConfigScaffolding(jqSelector) {
@@ -180,7 +413,8 @@ function buildQuickConfigScaffolding(jqSelector) {
             </tr>
         </table>
         <br>
-        <button type="submit" class="control" id="quickSubmit">Save Values and Reboot</button>
+        <button class="control" id="reboot">Reboot without saving</button>&nbsp;&nbsp;&nbsp;&nbsp;
+        <button type="submit" class="control" id="quickSubmit">Save values and reboot</button>
     </div>
 `);
 }
@@ -225,7 +459,9 @@ function quickConfig(us) {
   $('#longConfig').html('');
   $('#wait').html('');
   $('#quickConfig').show();
+  $('.unhideBaseQR').show();
   $('.varform').css('width', '100%');
+  $('#reboot').toggle(!IsSimpleDemo);
 
   $('#quickSubmit').prop('disabled', true);
 
@@ -256,7 +492,20 @@ function quickConfig(us) {
   }
   $('#exclusion').html(html);
 
+  $('.unhideBaseQR').click(function() {
+    $('#QRCodes').show();
+    $('.unhideBaseQR').hide();
+    setTimeout(function() {
+      $('html,body').scrollTop($(document).height());
+    }, 100);
+  });
+
   $('#quickConfig').on('change', 'input', onChangeQuickConfig);
+
+  $('#reboot').click(function() {
+    const button = this;
+    doReboot(button, 500);
+  });
 
   $('#quickSubmit').click(function() {
     const button = this;
@@ -264,6 +513,7 @@ function quickConfig(us) {
     if (QuickConfig.languages[settings.localeIdx].configFun) {
       QuickConfig.languages[settings.localeIdx].configFun(settings.newSettings);
     }
+    $('#reboot').attr('disabled', 'disabled');
     if (Query.setup !== 'Local') {
       $.ajax({
         type: "POST",
@@ -526,16 +776,19 @@ function getSettings() {
                               .playerConfigs[player];
   const type = settings.values.ExRModel.substr(0, 2);
   const sbdType = settings.values.ExRModel.slice(-2);
+  const collatValues = {};
   if ((type === 'HT' && !IsSimpleDemo || sbdType === 'HT' && IsSimpleDemo) && exclusion) {
     const collat = ((settings.values.collateralDefinition || '') + ' ' + exclusion).trim();
-    settings.values.collateralDefinition = collat;
+    collatValues.collateralDefinition = collat;
   }
   const newSettings = Object.assign({}, QuickConfig.defaultValues,
-                                    {locale: locale}, settings.values);
+                                    {locale: locale}, settings.values, collatValues);
   return { newSettings: newSettings, localeIdx: localeIdx, };
 }
 
 function normalConfig(us) {
+  $('#QRCodes').show();
+  $('#longConfig').show();
   $('#version').text(us.presentationversion || us.presentationVersion);
 
   let str='<form id="vars" action="/SetValues" method="post"><table class="shell">';
@@ -709,4 +962,43 @@ function normalConfig(us) {
   str += '</table>';
 
   $('div.vardiv').html(str);
+}
+
+function tuneConfig(us) {
+  $('#QRCodes').hide();
+  $('#longConfig').hide();
+  $('#version').text(us.presentationversion || us.presentationVersion);
+
+  let str='<form id="vars" action="/SetValues" method="post"><table class="shell">';
+
+  str += '<tr><td class="shellLabel">Experience Tuning:</td><td><table class="edit">';
+  for (const key in us) {
+    const val = us[key];
+    let desc;
+    switch (key.toLowerCase()) {
+      case "collateraldefinition":
+        desc="Collateral";
+        break;
+      case "startingvolumesetting":
+        desc="Starting Volume (low, medium, high, blank=default)";
+        break;
+      case "maxvolumesetting":
+        desc="Maximum Volume (blank=default)";
+        break;
+      case "sessiontimeoutdefault":
+        desc="Session timeout (seconds; blank=120 secs)";
+        break;
+    }
+    if (desc)
+      str += '<tr><td class="editDesc">'+desc+'</td><td width="25px">&nbsp;</td><td><input class="bs_input" type="text" name="'+key+'" value="'+htmlEscape(val)+'"/></td></tr><tr><td>&nbsp;</td></tr>';
+  }
+  str += '</table></td></tr>';
+
+  str += '</table>';
+
+  str += '<br/><br/><center>';
+  str += '<button class="control" href="#" onclick="return doSubmit(this);">Save Values</button>&nbsp;&nbsp;&nbsp;';
+  str += '<button class="control" href="#" onclick="return doReboot(this);">Reboot</button>';
+  str += '</center></form>';
+  $('div.varform').html(str);
 }

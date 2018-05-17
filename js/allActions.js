@@ -1,5 +1,3 @@
-
-
 function Predefined() {
   openPresent();
 
@@ -535,6 +533,26 @@ function Play_On_Off() {
   hitEnter();
 }
 
+function PlaySongs() {
+
+  var count = 0;
+  var songs_change_interval = setInterval(function() {
+    if (count % 4 == 0) {
+      document.querySelector("*[data-item=Maggie_Rogers]").click();
+      count++;
+    } else if (count % 4 == 1) {
+      document.querySelector("*[data-item=Gorillaz]").click();
+      count++;
+    } else if (count % 4 == 2) {
+      document.querySelector("*[data-item=Rag_N_Bone_Man]").click();
+      count++;
+    } else if (count % 4 == 3) {
+      document.querySelector("*[data-item=Phoenix]").click();
+      count++;
+    }
+  }, 3000)
+}
+
 function Play_J_Boy() {
   checkDriver();
   $('#testingStatus').html("Play J Boy");
@@ -565,6 +583,11 @@ function Play_Video_AndrewBird() {
   executeScript(tempcode);
   hitEnter();
 }
+
+//var songs_change_interval = setInterval(function (){document.querySelector("*[data-item=Phoenix]").click(); setTimeout(function() {
+document.querySelector("*[data-item=Kiss]").click()
+}, 3000);
+}, 48000);
 
 function Play_Video_Kiss() {
   checkDriver();
@@ -687,3 +710,40 @@ function checkDriver() {
     testconsole = findConsole(driver);
   }
 }
+
+// var keepLooping = true;
+// var songs_change_interval = setInterval(function() {
+//   document.querySelector("*[data-item=Phoenix]").click();
+//
+//   function ontimeout() {
+//     if (keepLooping) {
+//       document.querySelector("*[data-item=Kiss]").click();
+//       setTimeout(ontimeout, Math.floor(Math.random() * 4) + 1);
+//     }
+//   }
+// }, 48000);
+
+//    var keepLooping = true;
+// (function ontimeout(){
+//     if(keepLooping){
+//         doTheAction();
+//         setTimeout(ontimeout, Math.random() * 100);
+//     }
+// })();
+
+// var songs_change_interval = setInterval(function (){document.querySelector("*[data-item=Phoenix]").click(); setTimeout(function() {
+//    document.querySelector("*[data-item=Kiss]").click()
+//  }, 3000);}, 48000);
+
+//Math.floor(Math.random() * 6) + 1
+
+// var songs_change_interval = setInterval(function() {
+//     $(document.getElementsByClassName('areaVideoBack')).click();
+//     setTimeout(function() {
+//       document.querySelector("*[data-item=Phoenix]").click()
+//     }, 1500);
+//     setTimeout(function() {
+//       document.querySelector("*[data-item=Kiss]").click()
+//     }, 4000);
+//   },
+//   22000);
