@@ -331,6 +331,7 @@ function menuConfig(us) {
     getMethodFromBrightSign(url, function() {
       const url = 'backDoor?command=sonos!sall!factoryreset';
       getMethodFromBrightSign(url, function() {
+        $('#button-reconfig').removeAttr('disabled');
         $('#button-reboot').removeAttr('disabled');
       });
     });
@@ -371,6 +372,7 @@ function menuConfig(us) {
       $variablesTable.html('');
     }
 
+    addBSVariable($variablesTable, us, 'SerialNumber');
     addBSVariable($variablesTable, us, 'brightSignIP');
     addBSVariable($variablesTable, us, 'firmwareVersion');
     addBSVariable($variablesTable, us, 'activePresentation');

@@ -68,7 +68,7 @@ function displayQRData(us, brief) {
         case "unitid2":
           addToQRText('ID2', val);
           break;
-        case "startingvolumedefault":
+        case "startingvolumesetting":
           addToQRText('StartVol', val);
           break;
         case "maxvolumedefault":

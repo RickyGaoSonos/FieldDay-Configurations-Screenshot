@@ -146,7 +146,7 @@ var QuickConfig = {
           playerConfigs: {
             'Beam' : {
               values: {
-                ExRModel: 'HT.E',
+                ExRModel: 'HT',
                 SpeakerModel: 'HT.E',
                 collateralDefinition: 'LT',
               },

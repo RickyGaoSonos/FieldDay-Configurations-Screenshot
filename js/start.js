@@ -150,7 +150,11 @@ function initialize() {
   });
 
   $('#getpictures').click(function() {
-    GetAllPictures(511);
+    GetAllPictures(0);
+  });
+
+  $('#getPicturesSimpleDemo').click(function() {
+    GetAllPicturesSimpleDemo(26);
   });
 
   $('#changesettingonetime').click(function() {
@@ -195,23 +199,24 @@ function RetrieveAllSettings() {
           fixtures[j].click();
           var displays = $('#display').find('input[type=radio]');
           for (var k = 0; k < displays.length; k++) {
-            if (displays[k].id != 'SimpleDemo' && displays[k].id != 'NoTouchscreen') {
+            //  if (displays[k].id != 'SimpleDemo' && displays[k].id != 'NoTouchscreen') {
+            if (displays[k].id == 'SimpleDemo') {
               displays[k].click();
               var players = $('#player').find('input[type=radio]');
               for (var l = 0; l < players.length; l++) {
                 players[l].click();
-                if (fixtures[j].id != 'AIO') {
-                  var exclusions = $('#exclusion').find('input[type=radio]');
-                  for (var m = 0; m < exclusions.length; m++) {
-                    exclusions[m].click();
-                    allSettings.push(getSettings());
-                    displaySettings.push(languages[i].id + " - " + fixtures[j].id + " - " + displays[k].id + " - " + players[l].id +
-                      " - " + exclusions[m].id);
-                  }
-                } else {
-                  allSettings.push(getSettings());
-                  displaySettings.push(languages[i].id + " - " + fixtures[j].id + " - " + displays[k].id + " - " + players[l].id);
-                }
+                // if (fixtures[j].id != 'AIO') {
+                //   var exclusions = $('#exclusion').find('input[type=radio]');
+                //   for (var m = 0; m < exclusions.length; m++) {
+                //     exclusions[m].click();
+                //     allSettings.push(getSettings());
+                //     displaySettings.push(languages[i].id + " - " + fixtures[j].id + " - " + displays[k].id + " - " + players[l].id +
+                //       " - " + exclusions[m].id);
+                //   }
+                // } else {
+                allSettings.push(getSettings());
+                displaySettings.push(languages[i].id + " - " + fixtures[j].id + " - " + displays[k].id + " - " + players[l].id);
+                // }
               }
             }
           }
@@ -251,6 +256,39 @@ function GetAllPictures(index) {
                     $('#TestingInfo').html('Change to Next');
                     var next_index = index + 1;
                     GetAllPictures(next_index)
+                  });
+              }
+            });
+        });
+    });
+}
+
+function GetAllPicturesSimpleDemo(index) {
+  console.log(index);
+  $('#TestingInfo').html('Input New Setting ' + displaySettings[index]);
+  InputNewSetting(allSettings[index]);
+
+  delay(4000)
+    .then(() => {
+      $('#TestingInfo').html('Turn off BrightSign Auto Sign');
+      TureOffBrightSignAutoSignwithDLI();
+
+      delay(2000)
+        .then(() => {
+          $('#TestingInfo').html('Factory Reset Players');
+          FactoryResetAllPlayersWithinNetwork();
+
+          delay(55000 * 3)
+            .then(() => {
+              $('#TestingInfo').html('Get ScreenShots');
+              GetScreenShotsSimpleDemo(index);
+
+              if (index < allSettings.length) {
+                delay(70000)
+                  .then(() => {
+                    $('#TestingInfo').html('Change to Next');
+                    var next_index = index + 1;
+                    GetAllPicturesSimpleDemo(next_index)
                   });
               }
             });
@@ -428,6 +466,14 @@ function InputNewSetting(current_setting) {
   //   Reboot();
   // });
 
+}
+
+function GetScreenShotsSimpleDemo(index) {
+  console.log("Take Shots");
+  delay(5000)
+    .then(() => {
+      TakeScreenShot(index, 'start');
+    });
 }
 
 function GetScreenShots(index) {
