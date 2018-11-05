@@ -2,7 +2,7 @@
 //http://10.96.1.44:8008/experience/events/interface/backDoor?command=sonos!sall!factoryreset
 
 "use strict";
-
+var fs = require('fs');
 var webdriver = require("selenium-webdriver"),
   By = webdriver.By,
   until = webdriver.until,
@@ -24,6 +24,7 @@ var presentation = 'AIO';
 var devices = new Array;
 var allSettings = [];
 var displaySettings = [];
+var versionNumber = '';
 
 var Device = {
   createNew: function(ip, name, zone, seversion, hdversion, rdm) {
@@ -114,6 +115,7 @@ function initialize() {
                 break;
               case 'presentationversion':
                 str += '<tr><td>Present Version:</td><td>' + val + '</td></tr>';
+                versionNumber = val;
                 break;
             }
           }
@@ -159,19 +161,37 @@ function initialize() {
 
   $('#changesettingonetime').click(function() {
     $('#TestingInfo').html('Input New Setting ' + getSettings());
-    InputNewSetting(getSettings());
+    let setting = getSettings();
+    setting.newSettings.collateralDefinition = "AMPAMP";
+    console.log(setting);
 
-    delay(4000)
-      .then(() => {
-        $('#TestingInfo').html('Turn off BrightSign Auto Sign');
-        TureOffBrightSignAutoSignwithDLI();
+    $('#TestingInfo').html('FactoryReset all Players');
+    FactoryResetAllPlayers();
 
-        delay(2000)
-          .then(() => {
-            $('#TestingInfo').html('Factory Reset Players');
-            FactoryResetAllPlayersWithinNetwork();
-          });
-      });
+      delay(2000)
+        .then(() => {
+          $('#TestingInfo').html('Input New Setting ' + setting);
+          InputNewSetting(setting);
+
+          delay(5000)
+            .then(() => {
+              $('#TestingInfo').html('Turn off BrightSign Auto Sign');
+              TureOffBrightSignAutoSignwithDLI();
+
+              delay(10000)
+                .then(() => {
+                  $('#TestingInfo').html('Turn on players in new topology');
+                  TurnOnPlayersInNewSettings(setting);
+
+                  delay(10000)
+                    .then(() => {
+                      var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?" + BrightSign + "=ON";
+                      executeCommand(command);
+                    });
+                });
+            });
+        });
+
   });
 
   function hideChangeSettingSection() {
@@ -191,76 +211,173 @@ function RetrieveAllSettings() {
 
   var languages = $('#language').find('input[type=radio]');
   for (var i = 0; i < languages.length; i++) {
-    if (languages[i].id != 'zh-CN') {
-      languages[i].click();
-      var fixtures = $('#fixture').find('input[type=radio]');
-      for (var j = 0; j < fixtures.length; j++) {
-        if (fixtures[j].id != 'AdditionalForms') {
-          fixtures[j].click();
-          var displays = $('#display').find('input[type=radio]');
-          for (var k = 0; k < displays.length; k++) {
-            //  if (displays[k].id != 'SimpleDemo' && displays[k].id != 'NoTouchscreen') {
-            if (displays[k].id == 'SimpleDemo') {
-              displays[k].click();
-              var players = $('#player').find('input[type=radio]');
-              for (var l = 0; l < players.length; l++) {
-                players[l].click();
-                // if (fixtures[j].id != 'AIO') {
-                //   var exclusions = $('#exclusion').find('input[type=radio]');
-                //   for (var m = 0; m < exclusions.length; m++) {
-                //     exclusions[m].click();
-                //     allSettings.push(getSettings());
-                //     displaySettings.push(languages[i].id + " - " + fixtures[j].id + " - " + displays[k].id + " - " + players[l].id +
-                //       " - " + exclusions[m].id);
-                //   }
-                // } else {
-                allSettings.push(getSettings());
-                displaySettings.push(languages[i].id + " - " + fixtures[j].id + " - " + displays[k].id + " - " + players[l].id);
-                // }
-              }
+    languages[i].click();
+    var fixtures = $('#fixture').find('input[type=radio]');
+    for (var j = 0; j < fixtures.length; j++) {
+    //  if (fixtures[j].id != 'AdditionalForms' && fixtures[j].id != 'HT') {
+    //if (fixtures[j].id != 'AdditionalForms') {
+        fixtures[j].click();
+        var displays = $('#display').find('input[type=radio]');
+        for (var k = 0; k < displays.length; k++) {
+          if (displays[k].id == 'NoTouchscreen') {
+            //if (displays[k].id == 'SimpleDemo') {
+            displays[k].click();
+            var players = $('#player').find('input[type=radio]');
+            for (var l = 0; l < players.length; l++) {
+              players[l].click();
+              // if (fixtures[j].id != 'AIO') {
+              //   var exclusions = $('#exclusion').find('input[type=radio]');
+              //   for (var m = 0; m < exclusions.length; m++) {
+              //     exclusions[m].click();
+              //     allSettings.push(getSettings());
+              //     displaySettings.push(languages[i].id + " - " + fixtures[j].id + " - " + displays[k].id + " - " + players[l].id +
+              //       " - " + exclusions[m].id);
+              //   }
+              // } else {
+              let setting = getSettings();
+              setting.newSettings.collateralDefinition = "AMPAMP";
+              allSettings.push(setting);
+              displaySettings.push(languages[i].id + " - " + fixtures[j].id + " - " + displays[k].id + " - " + players[l].id);
+              // }
             }
-          }
+            //}
+        //  }
         }
       }
     }
-  }
 
-  // for(var i = 0; i < displaySettings.length; i++){
-  //   console.log(displaySettings[i]);
-  // }
+    // for(var i = 0; i < displaySettings.length; i++){
+    //   console.log(displaySettings[i]);
+    // }
+  }
 }
 
 function GetAllPictures(index) {
   console.log(index);
-  $('#TestingInfo').html('Input New Setting ' + displaySettings[index]);
-  InputNewSetting(allSettings[index]);
+  $('#TestingInfo').html('FactoryReset all Players');
+  FactoryResetAllPlayers();
 
-  delay(4000)
+  delay(2000)
     .then(() => {
-      $('#TestingInfo').html('Turn off BrightSign Auto Sign');
-      TureOffBrightSignAutoSignwithDLI();
+      $('#TestingInfo').html('Input New Setting ' + displaySettings[index]);
+      InputNewSetting(allSettings[index]);
 
-      delay(2000)
+      delay(5000)
         .then(() => {
-          $('#TestingInfo').html('Factory Reset Players');
-          FactoryResetAllPlayersWithinNetwork();
+          $('#TestingInfo').html('Turn off BrightSign Auto Sign');
+          TureOffBrightSignAutoSignwithDLI();
 
-          delay(55000 * 3)
+          delay(10000)
             .then(() => {
-              $('#TestingInfo').html('Get ScreenShots');
-              GetScreenShots(index);
+              $('#TestingInfo').html('Turn on players in new topology');
+              TurnOnPlayersInNewSettings(allSettings[index]);
 
-              if (index < 722) {
-                delay(70000)
-                  .then(() => {
-                    $('#TestingInfo').html('Change to Next');
-                    var next_index = index + 1;
-                    GetAllPictures(next_index)
-                  });
-              }
+              delay(10000)
+                .then(() => {
+                  var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?" + BrightSign + "=ON";
+                  executeCommand(command);
+
+                  delay(130000)
+                    .then(() => {
+                      $('#TestingInfo').html('Get ScreenShots');
+                      GetScreenShots(index);
+
+                      delay(70000)
+                        .then(() => {
+
+                          $('#TestingInfo').html('Save coverage');
+                          SaveCoverage(displaySettings[index]);
+
+                          if (index < 260) {
+                            delay(13000)
+                              .then(() => {
+                                $('#TestingInfo').html('Change to Next');
+                                var next_index = index + 1;
+                                GetAllPictures(next_index)
+                              });
+                          }
+
+                        });
+                    });
+                });
             });
         });
     });
+
+}
+
+function SaveCoverage(currentSetting){
+  var dir = '../tempCoverage';
+  var currentCoverage;
+
+  var request = require('request');
+  request({
+    url: 'http://' + ipText + ':8008/experience/events/interface/coverageData',
+    json: true
+  }, function(error, response, body) {
+    if (error) console.log(error);
+    else {
+      currentCoverage = body;
+
+      if (currentCoverage != null) {
+        var dir = '../tempCoverage';
+
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir);
+        }
+
+        var alldata = {
+          version: versionNumber,
+          date: Date.now(),
+          data: currentCoverage,
+        };
+
+        var json = JSON.stringify(alldata);
+        fs.writeFile(dir + '/' + versionNumber + '--' + Date.now() + "-- " + currentSetting +'.json', json, 'utf8',
+          function readFileCallback(err, data) {
+            if (err) {
+              console.log(err);
+            } else {
+              console.log("Coverage Data Save Successfully!");
+            }
+          });
+      } else {
+        console.log("No Coverage Data Loaded!");
+      }
+    }
+  });
+}
+
+function TurnOnPlayersInNewSettings(currentSetting) {
+  let speaker = currentSetting.newSettings.SpeakerModel.split('.')[1];
+  if (speaker.includes("1")) {
+    var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?" + Play1 + "=ON";
+    executeCommand(command);
+  }
+  if (speaker.includes("5")) {
+    var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?" + Play5 + "=ON";
+    executeCommand(command);
+  }
+  if (speaker.includes("O")) {
+    var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?" + Sonos1 + "=ON";
+    executeCommand(command);
+  }
+  if (speaker.includes("S")) {
+    var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?" + Playbase + "=ON";
+    executeCommand(command);
+  }
+  if (speaker.includes("E")) {
+    var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?" + Beam + "=ON";
+    executeCommand(command);
+  }
+  if (speaker.includes("R")) {
+    var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?" + Playbar + "=ON";
+    executeCommand(command);
+  }
+  if (speaker.includes("U")) {
+    var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?" + Sub + "=ON";
+    executeCommand(command);
+  }
 }
 
 function GetAllPicturesSimpleDemo(index) {
@@ -268,7 +385,7 @@ function GetAllPicturesSimpleDemo(index) {
   $('#TestingInfo').html('Input New Setting ' + displaySettings[index]);
   InputNewSetting(allSettings[index]);
 
-  delay(4000)
+  delay(2000)
     .then(() => {
       $('#TestingInfo').html('Turn off BrightSign Auto Sign');
       TureOffBrightSignAutoSignwithDLI();
@@ -301,11 +418,22 @@ function TureOffBrightSignAutoSign() {
   request("http://" + testIP + ":8008/experience/events/interface/backDoor?command=sonos!sall!disableplayermanagement");
 }
 
+function executeCommand(command) {
+  var util = require('util');
+  var exec = require('child_process').exec;
+
+  var child = exec(command, function(error, stdout, stderr) {
+    if (error !== null) {
+      console.log('exec error: ' + error);
+    }
+  });
+}
+
 function TureOffBrightSignAutoSignwithDLI() {
   var util = require('util');
   var exec = require('child_process').exec;
 
-  var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?1=CCL"
+  var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?a=OFF"
 
   var child = exec(command, function(error, stdout, stderr) {
     if (error !== null) {
@@ -429,7 +557,7 @@ function InputNewSetting(current_setting) {
     .then(function(response) {
       console.log("Succes!");
       console.log(current_setting);
-      //$('#TestingInfo').html('Rebooting');
+      $('#TestingInfo').html('Rebooting');
       //Reboot();
       // document.getElementById("findFD").disabled = true;
       // document.getElementById("IPText").disabled = true;
@@ -481,9 +609,9 @@ function GetScreenShots(index) {
   console.log("Create Driver");
   driver = createDriver();
   testconsole = findConsole(driver);
+  openPresent();
   //}
-
-  delay(8000)
+  delay(4000)
     .then(() => {
       openPresent();
 
@@ -557,7 +685,7 @@ function GetScreenShots(index) {
 
                                                                           delay(2000)
                                                                             .then(() => {
-                                                                              changeSideCOMP_RTF();
+                                                                              changeSideCOMPwithAMP();
 
                                                                               delay(2000)
                                                                                 .then(() => {

@@ -7,5 +7,9 @@
     "toolbar": true,
     "width": 1500,
     "height": 900
+  },
+  "dependencies": {
+    "fs": "0.0.1-security",
+    "request": "^2.88.0"
   }
 }

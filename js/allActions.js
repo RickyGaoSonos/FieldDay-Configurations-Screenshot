@@ -453,6 +453,14 @@ function changeSideCOMP_RTF() {
   hitEnter();
 }
 
+function changeSideCOMPwithAMP() {
+  checkDriver();
+  $('#testingStatus').html("Change all devices color to White");
+  var tempcode = "$(document.getElementById('catalogProductMapCONNECT').getElementsByClassName('compareWhite')).click();$(document.getElementById('catalogProductMapCONNECTAMP').getElementsByClassName('compareWhite')).click();$(document.getElementById('catalogProductMapAMP').getElementsByClassName('compareWhite')).click();";
+  executeScript(tempcode);
+  hitEnter();
+}
+
 function changeBlack() {
   checkDriver();
   var tempcode = "$(document.getElementById('compareMap1').getElementsByClassName('compareBlack')).click();$(document.getElementById('compareMap2').getElementsByClassName('compareBlack')).click();$(document.getElementById('compareMap3').getElementsByClassName('compareBlack')).click();";
@@ -466,6 +474,8 @@ function openAIOPresent() {
 
 function openPresent() {
   checkDriver();
+  console.log("driver")
+  console.log(driver)
   $('#testingStatus').html("Open Prentation");
   var tempcode = 'openPresentation();';
   executeScript(tempcode);
@@ -583,11 +593,6 @@ function Play_Video_AndrewBird() {
   executeScript(tempcode);
   hitEnter();
 }
-
-//var songs_change_interval = setInterval(function (){document.querySelector("*[data-item=Phoenix]").click(); setTimeout(function() {
-document.querySelector("*[data-item=Kiss]").click()
-}, 3000);
-}, 48000);
 
 function Play_Video_Kiss() {
   checkDriver();
