@@ -162,7 +162,7 @@ function initialize() {
   $('#changesettingonetime').click(function() {
     $('#TestingInfo').html('Input New Setting ' + getSettings());
     let setting = getSettings();
-    setting.newSettings.collateralDefinition = "AMPAMP";
+    //setting.newSettings.collateralDefinition = "AMPAMP";
     console.log(setting);
 
     $('#TestingInfo').html('FactoryReset all Players');
@@ -215,11 +215,12 @@ function RetrieveAllSettings() {
     var fixtures = $('#fixture').find('input[type=radio]');
     for (var j = 0; j < fixtures.length; j++) {
     //  if (fixtures[j].id != 'AdditionalForms' && fixtures[j].id != 'HT') {
-    //if (fixtures[j].id != 'AdditionalForms') {
+    if (fixtures[j].id == 'HT') {
         fixtures[j].click();
         var displays = $('#display').find('input[type=radio]');
         for (var k = 0; k < displays.length; k++) {
-          if (displays[k].id == 'NoTouchscreen') {
+          console.log(displays[k].id)
+          if (displays[k].id == 'Yes') {
             //if (displays[k].id == 'SimpleDemo') {
             displays[k].click();
             var players = $('#player').find('input[type=radio]');
@@ -235,13 +236,13 @@ function RetrieveAllSettings() {
               //   }
               // } else {
               let setting = getSettings();
-              setting.newSettings.collateralDefinition = "AMPAMP";
+              //setting.newSettings.collateralDefinition = "AMPAMP";
               allSettings.push(setting);
               displaySettings.push(languages[i].id + " - " + fixtures[j].id + " - " + displays[k].id + " - " + players[l].id);
               // }
             }
             //}
-        //  }
+          }
         }
       }
     }
@@ -277,7 +278,7 @@ function GetAllPictures(index) {
                   var command = "curl http://'admin':'sonosrocks!'@10.96.1.9/outlet?" + BrightSign + "=ON";
                   executeCommand(command);
 
-                  delay(130000)
+                  delay(200000)
                     .then(() => {
                       $('#TestingInfo').html('Get ScreenShots');
                       GetScreenShots(index);

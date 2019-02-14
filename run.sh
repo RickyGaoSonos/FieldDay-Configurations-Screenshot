@@ -1,1 +1,1 @@
-../nwjs-sdk-v0.30.2-osx-x64/nwjs.app/Contents/MacOS/nwjs ../FieldDay-Configurations-Screenshot/
+../nwjs-sdk-v0.35.5-osx-x64/nwjs.app/Contents/MacOS/nwjs ../FieldDay-Configurations-Screenshot/

@@ -55,6 +55,13 @@ var QuickConfig = {
                 collateralDefinition: 'LT',
               },
             },
+            'SonosOne' : {
+              values: {
+                ExRModel: 'AIO',
+                SpeakerModel: 'AIO.O',
+                collateralDefinition: 'LT',
+              },
+            },
           },
         },
         'Simple Demo' : {
@@ -220,7 +227,7 @@ var QuickConfig = {
         },
       },
     },
-    'US Additional' : {
+    'Additional' : {
       displayName: 'Additional Forms',
       displayConfigs: {
         'Yes' : {
@@ -230,6 +237,17 @@ var QuickConfig = {
                 ExRModel: 'HT',
                 SpeakerModel: 'HT.EO',
                 collateralDefinition: 'HTAIO',
+              },
+            },
+          },
+        },
+        'Yes, with TV' : {
+          playerConfigs: {
+            'Beam,Sub,Play5,SonosOne' : {
+              values: {
+                ExRModel: 'HT+TV',
+                SpeakerModel: 'HT.EU5O',
+                collateralDefinition: 'HTAIO NSO O5BS',
               },
             },
           },
@@ -250,6 +268,16 @@ var QuickConfig = {
                 collateralDefinition: 'LT NRS',
               },
             },
+            'Beam,Play5,SonosOne' : {
+              values: {
+                ExRModel: 'AIO',
+                SpeakerModel: 'AIO.E5O',
+                collateralDefinition: 'LT NRS',
+              },
+            },
+            // Note: The following looks inconsistent with the above configurations.  We
+            // could use "AIO / AIO.EO / LT NRS", but we use the HT.EO topology because
+            // it's used above for the Display:Yes form.
             'Beam,SonosOne' : {
               values: {
                 ExRModel: 'HT',
@@ -261,11 +289,41 @@ var QuickConfig = {
         },
       },
     },
+    'Experimental' : {
+      displayName: 'Experimental',
+      displayConfigs: {
+        'Yes' : {
+          playerConfigs: {
+            'MX' : {
+              values: {
+                ExRModel: 'AIO',
+                SpeakerModel: 'AIO.M',
+                collateralDefinition: '',
+              },
+            },
+            'LX' : {
+              values: {
+                ExRModel: 'AIO',
+                SpeakerModel: 'AIO.L',
+                collateralDefinition: '',
+              },
+            },
+            'MX,LX' : {
+              values: {
+                ExRModel: 'AIO',
+                SpeakerModel: 'AIO.ML',
+                collateralDefinition: '',
+              },
+            },
+          },
+        },
+      },
+    },
   },
 
   languageConfigs: {
     'RTF': { 'RTF-AIO': true, 'RTF-HT': true },
-    'US-RTF': { 'RTF-AIO': true, 'RTF-HT': true, 'US Additional': true },
+    'US-RTF': { 'RTF-AIO': true, 'RTF-HT': true, 'Additional': true },
   },
 
   videoExclusions: [

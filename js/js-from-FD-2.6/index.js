@@ -14,8 +14,12 @@
 
 var Query = document.location.search.replace(/(^\?)/,'').split("&").map(function(n){return n = n.split("="),this[n[0]] = n[1],this;}.bind({}))[0];
 
-var host;
-//host = 'http://10.96.1.2:8008/GetUserVars'; // Debug
+var Host     = (location.protocol === 'file:') ? 'localhost' : location.hostname;
+var Protocol = (location.protocol === 'file:') ? 'http:' : location.protocol;
+var Port     = (location.protocol === 'file:') ? '8008' : location.port;
+var VarsHost  = `${Protocol}//${Host}:${Port}/GetUserVars`;
+var RebootCmd = `${Protocol}//${Host}:${Port}/experience/events/interface/reboot`;
+var SetValsCmd = `${Protocol}//${Host}:${Port}/SetValues`;
 
 var Debug = false;
 
@@ -25,8 +29,18 @@ var HarnessButtonCount;
 var GroupNames = ['language', 'fixture', 'display', 'player', 'exclusion'];
 var CurrentGroup = 0;
 var UserVars;
+var HijackEnabled;
+var WiFiEnabled;
+
+var ServerTime;
+var ServerTimeString;
+var ServerStatus;
 
 var BrightSignMessageExchange;
+var EnableExperimentalFeatures = false;
+var EnableRapidConfig = false;
+
+var IsWebDemoMode = (localStorage && localStorage.localSetup && localStorage.vars);
 var IsRunningOnBrightSign = false;
 if (typeof(CloseAllBSClasses) === 'function') {
   CloseAllBSClasses(true);
@@ -84,24 +98,82 @@ function doGetConfigVars(timeout) {
     doUserVars(vars);
     return;
   }
-  setTimeout(function() { efficientGetUserVars(doUserVars, host); }, timeout);
+  setTimeout(function() { efficientGetUserVars(doUserVars, VarsHost); }, timeout);
 }
 
-function getMethodFromBrightSign(getUrl, successCallback, completeCallback, dataType) {
+function getTopologyOnce() {
+  getMethodFromBrightSign('sonosData', function (data, textStatus, jqXHR) {
+    extractServerTime(data);
+    console.log(`Time Server Status: ${ServerStatus}`);
+    ServerStatus = ServerStatus ? '' : 'Auto';
+  }, function(jqXHR, textStatus) {
+    doGetConfigVars(2000);
+  }, null, 'json');
+}
+
+function getMethodFromBrightSign(getUrl, successCB, completeCB, errorCB, dataType) {
   $.ajax({
-    url: '/experience/events/interface/' + getUrl,
+    url: `${Protocol}//${Host}:${Port}/experience/events/interface/${getUrl}`,
     dataType: dataType || 'html',
-    success: successCallback,
-    error: (function(jqHXR, textStatus, errorThrown) {
-      alert(`Get BrightSign vars failed: ${textStatus}`);
+    success: successCB,
+    error: (function(jqXHR, textStatus, errorThrown) {
+      if (jqXHR.status == 0) return;
+      const responseText = jqXHR.responseText && jqXHR.responseText.substr(0, 255) || '';
+      $.confirm({
+        title: 'BrightSign method failure',
+        content: `Get from BrightSign method failed: statusCode=${jqXHR.status}
+                  ${textStatus}-${errorThrown}: ${responseText}`,
+        buttons: {
+          ok: function () { if (errorCB) errorCB(); },
+        },
+        useBootstrap: false,
+        backgroundDismiss: function () { return 'ok'; },
+      });
     }),
-    complete: completeCallback,
+    complete: completeCB,
   });
 }
 
+function extractServerTime(data) {
+  ServerTime = null;
+  ServerTimeString = null;
+  ServerStatus = "No time data";
+
+  const time = data.time;
+  if (!time) return;
+
+  ServerStatus = "No time";
+  if (!time.time) return;
+
+  ServerTime = new Date(time.time * 1000);
+  const isoDateTimeParts = ServerTime.toISOString().split(/[Z\.]/);
+  ServerTimeString = isoDateTimeParts[0];
+
+  if (!time.server) {
+    ServerStatus = "Can't see timeserver";
+    return;
+  }
+
+  if (!time.server.success_timestamp) {
+    ServerStatus = "No time from timeserver";
+    return;
+  }
+  if (time.server.failure_reason) {
+    ServerStatus = time.server.failure_reason;
+    return;
+  }
+
+  ServerStatus = '';
+}
+
 $(document).ready(function() {
-  if (IsRunningOnBrightSign) setTimeout(initializeBrightSignCommunications, 250);
-  doGetConfigVars(2000);
+  // We use BrightSign communications to get the Simple Demo button pushes
+  // if (IsRunningOnBrightSign) {
+  //   setTimeout(initializeBrightSignCommunications, 250);
+  //   getTopologyOnce();
+  // } else {
+  //   doGetConfigVars(2000);
+  // }
 });
 
 function htmlEscape(str) {
@@ -119,8 +191,9 @@ function doReboot(delay) {
     return false;
   }
   $('.control').prop('disabled', true).html('Please wait...');
+  $('button').prop('disabled', true);
   setTimeout(function() {
-    window.location.href='/experience/events/interface/reboot';
+    window.location.href = RebootCmd;
   }, delay || 200);
   return false;
 }
@@ -139,6 +212,25 @@ function doSubmit() {
   $('button').prop('disabled', false);
   setTimeout(function () {
     $('form').submit();
+    const $currentDT = $('input[name=currentdt]');
+    const newTimeStr = $currentDT.val();
+    console.log(`Considering setting time to: ${newTimeStr}`);
+    // We don't want to try to set the time unless
+    if (newTimeStr == ServerTimeString) {
+      console.log('The user did not change the time');
+    } else if (newTimeStr.indexOf('[') > -1 || newTimeStr.indexOf(']') > -1) {
+      console.log('The time has [Auto], indicating we should leave the time server time');
+    } else {
+      console.log(`Trying to set time to: ${newTimeStr}`);
+      const newTime = new Date(newTimeStr);
+      if (isNaN(newTime)) {
+        console.log('The time does not have a valid format');
+      } else {
+        const epoch = newTime.getTime() / 1000;
+        console.log(`Found time's epoch: ${epoch}`);
+        getMethodFromBrightSign(`setTime?time=${epoch}`, null, null, null, 'json');
+      }
+    }
   }, 200);
   return false;
 };
@@ -151,6 +243,39 @@ function doReconfig() {
   }, 200);
 }
 
+function doReauth() {
+  $('.control').prop('disabled', true).html('Please wait...');
+  $('button').prop('disabled', true);
+  setTimeout(function() {
+    window.location.href = '/config.html';
+  }, 200);
+}
+
+function updateToggles(us) {
+  if (us) {
+    processUpdateToggles(us);
+  } else {
+    efficientGetUserVars(processUpdateToggles, VarsHost);
+  }
+}
+
+let UpdateTogglesTimer;
+
+function processUpdateToggles(us) {
+  if (us) enableToggles(us);
+  getMethodFromBrightSign('backDoor?command=sonos!sall!readglistatus');
+  UpdateTogglesTimer = setTimeout(function() {
+    updateToggles();
+  }, 60000);
+}
+
+function cancelUpdateToggles() {
+  if (UpdateTogglesTimer) {
+    clearTimeout(UpdateTogglesTimer);
+    UpdateTogglesTimer = null;
+  }
+}
+
 function doUserVars(us) {
   if (!us)
   {
@@ -159,6 +284,21 @@ function doUserVars(us) {
     return;
   }
   UserVars = us;
+  $('#version').text(us.presentationversion || us.presentationVersion);
+
+  var keyValue = document.cookie.match('(^|;) ?brightsign=([^;]*)(;|$)');
+  if (!(keyValue && keyValue[2] && keyValue[2] === `${us.browserToken}-${us.bootCount}`)) {
+    if (!IsRunningOnBrightSign && Query.setup !== 'Local' && Query.setup != 'LocalTune') doReauth();
+  }
+
+  if (ServerTime){
+    const err = ServerStatus ? `[${ServerStatus}] ` : '';
+    us.currentdt = `${err}${ServerTimeString}`;
+  }
+
+  EnableExperimentalFeatures = (us.enableExperimentalFeatures === 'true');
+  if (IsWebDemoMode) EnableExperimentalFeatures = true;
+  EnableRapidConfig = (us.enableRapidConfig === 'true');
 
   IsSimpleDemo = (IsRunningOnBrightSign && us.simpleDemoButtonSetup === 'true');
   IsSimpleDemo = (IsSimpleDemo || Query.simple === 'true');
@@ -176,6 +316,8 @@ function doUserVars(us) {
   if (!tune) {
     $('link[jqui="true"]').remove();
   }
+
+  $('.ui-loader.ui-loader-default').hide();
 
   if (IsSimpleDemo) {
     buildQueryForButtonHarness('#quickConfigContainer');
@@ -242,7 +384,7 @@ table.statusTable td {
 }
 </style>
     <div id="quickMenu" style="display: none; width=800px;">
-        <table style="width: 960px; class="menu">
+        <table style="width: 960px;" class="menu">
             <tr>
               <td width="10%"><button id="button-reconfig" class="menu-button">Reconfigure</td>
               <td width="40%">Reconfigure this system</td>
@@ -264,19 +406,33 @@ table.statusTable td {
                   <span class="hijackOff"style="display:none">Off</span>
               </td>
               <td>
-                  <span class="hijackOn">Prepare for Hijack Mode</span>
+                  <span class="hijackOn" style="display:none">Prepare for Hijack Mode</span>
                   <span class="hijackOff" style="display:none">Remove Hijack Mode</span>
               </td>
             </tr>
-            <tr>
+            <tr class="hijackOff" style="display:none">
               <td class="hijackOff"><button id="button-auth" class="menu-button">Mic Auth</td>
               <td class="hijackOff">Set/check Sonos microphone control authorization</td>
-              <td class="firmwareMenu">
+              <td class="hijackOff"><button id="button-config" class="menu-button">Config Household</td>
+              <td class="hijackOff">Enable buttons / Join Sonos controller</td>
+            </tr>
+            <tr>
+              <td class="firmwareMenu" style="display:none">
                   <button id="button-firmware" class="menu-button">Firmware
               </td>
-              <td class="firmwareMenu">Use the Sonos firmware utility</td>
+              <td class="firmwareMenu" style="display:none">Use the Sonos firmware utility</td>
+              <td class="wifiMenu" style="display:none">
+                  <button id="button-wifi" class="menu-button" disabled="disabled">WiFi
+                  <span class="wifiOn" style="display:none">On</span>
+                  <span class="wifiOff" style="display:none">Off</span>
+              </td>
+              <td class="wifiMenu" style="display:none">
+                  <span class="wifiOn" style="display:none">Turn on display's WiFi</span>
+                  <span class="wifiOff" style="display:none">Turn off display's WiFi</span>
+              </td>
             </tr>
         </table>
+       <div id="returnToAuth"></div>
        <br>
        <table id="variablesTable" class="statusTable">
        </table>
@@ -295,7 +451,7 @@ function getTopology() {
     processTopology(data);
   }, function(jqXHR, textStatus) {
     renewTopology();
-  },'json');
+  }, null, 'json');
 }
 
 var Timer;
@@ -323,10 +479,13 @@ function processTopology(data) {
     return;
   }
 
+  const sonosButtons = '#button-data, #button-reset, #button-hijack, #button-auth, ' +
+                       '#button-config, #button-wifi';
   if (!data.complete) {
-    $('#button-data, #button-reset, #button-hijack').attr('disabled', 'disabled');
+    $(sonosButtons).attr('disabled', 'disabled');
   } else if (!initialSonosEnableDone) {
-    $('#button-data, #button-reset, #button-hijack').removeAttr('disabled');
+    $(sonosButtons).removeAttr('disabled');
+    $('.not-complete').hide();
     initialSonosEnableDone = true;
   }
 
@@ -366,22 +525,39 @@ function jqConfirm(callback) {
       no: function () {},
     },
     useBootstrap: false,
-    backgroundDismiss: true, // this will just close the modal
+    backgroundDismiss: function() { return 'no'; },
   });
+}
+
+function enableToggles(us) {
+  HijackEnabled = !((us.RDMMode || us.rdmmode) === 'yes');
+  $('.hijackOn').toggle(!HijackEnabled);
+  $('.hijackOff').toggle(HijackEnabled);
+
+  const gliData = (typeof(us.gliStatus) === 'string') && us.gliStatus.split(':') || [];
+  WiFiEnabled = gliData[10];
+  $('.wifiOn').toggle(!Number(WiFiEnabled));
+  $('.wifiOff').toggle(!!Number(WiFiEnabled));
+  $('.wifiMenu').toggle(typeof(WiFiEnabled) !== 'undefined');
+  $('#button-wifi').removeAttr('disabled');
 }
 
 function menuConfig(us) {
   buildMenuScaffolding('#quickConfigContainer');
-  $('#version').text(us.presentationversion || us.presentationVersion);
   $('#longConfig').html('');
   $('#wait').html('');
   $('#quickMenu').show();
   $('.unhideBaseQR').show();
   $('.varform').css('width', '100%');
 
-  getMethodFromBrightSign('backDoor?command=sonos!sall!disableplayermanagement', function() {
-    getTopology();
-  });
+  getMethodFromBrightSign('backDoor?command=sonos!sall!readglistatus');
+  getMethodFromBrightSign('backDoor?command=sonos!sall!disableplayermanagement', getTopology);
+
+  if (IsRunningOnBrightSign) {
+	const ret = '&nbsp;&nbsp;&nbsp;<button class="control" href="#" id="reauth"' +
+          'onclick="return doReauth();">Return to Authentication</button>';
+    $('#returnToAuth').html(`<br><br>${ret}<br><br>`);
+  }
 
   let debug = {};
   try {
@@ -389,12 +565,11 @@ function menuConfig(us) {
   } catch (ex) {
     console.log('Could not parse debugPrint options');
   }
-  const firmware = debug.firmware;
-  if (!firmware) $('.firmwareMenu').hide();
 
-  const rdmMode = ((us.RDMMode || us.rdmmode) === 'yes');
-  $('.hijackOn').toggle(rdmMode);
-  $('.hijackOff').toggle(!rdmMode);
+  const firmware = debug.firmware;
+  $('.firmwareMenu').toggle(firmware);
+
+  updateToggles(us);
 
   $('#quickConfigContainer').on('click', '#button-reconfig', function() {
     $('.menu-button').attr('disabled', 'disabled');
@@ -412,15 +587,21 @@ function menuConfig(us) {
     $('.menu-button').attr('disabled', 'disabled');
     window.location.href = '/SonosAuthenticate.html';
   });
+  $('#quickConfigContainer').on('click', '#button-config', function() {
+    const url = 'enterHijack';
+    getMethodFromBrightSign(url, function() {
+      $('#button-config').attr('disabled', 'disabled');
+    });
+  });
   $('#quickConfigContainer').on('click', '#button-reboot', function() {
     $('.menu-button').attr('disabled', 'disabled');
     setTimeout(function() {
-      window.location.href = '/experience/events/interface/reboot';
+      window.location.href = RebootCmd;
     },100);
   });
   $('#quickConfigContainer').on('click', '#button-reset', function() {
     jqConfirm(function() {
-      $('.menu-button').attr('disabled', 'disabled');
+      $('.menu-button,#reauth').attr('disabled', 'disabled');
       const url = 'backDoor?command=sonos!sall!disablehouseholdmanagement';
       getMethodFromBrightSign(url, function() {
         const url = 'backDoor?command=sonos!sall!factoryreset';
@@ -432,12 +613,47 @@ function menuConfig(us) {
     });
   });
   $('#quickConfigContainer').on('click', '#button-hijack', function() {
-    jqConfirm(function() {
-      $('.menu-button').attr('disabled', 'disabled');
-      const url = 'toggleRDM';
+    cancelUpdateToggles();
+    const toggleHijack = function() {
+      const url = `toggleRDM?rdm=${HijackEnabled ? 'yes' : 'no'}`;
       getMethodFromBrightSign(url, function() {
         $('#button-reboot').removeAttr('disabled');
+        $.confirm({
+          title: 'BrightSign Rebooting',
+          content: 'The display will now reboot to prepare the selected Hijack mode',
+          buttons: {
+            ok: function () {},
+          },
+          useBootstrap: false,
+          backgroundDismiss: true, // this will just close the modal
+        });
       });
+    };
+    let success;
+    let complete;
+    let error;
+    if (HijackEnabled) {
+      complete = toggleHijack;
+    } else {
+      success = toggleHijack;
+      error = function() { window.location.reload(); };
+    }
+    jqConfirm(function() {
+      $('.menu-button').attr('disabled', 'disabled');
+      const url = `toggleWiFi?enable=${!HijackEnabled}`;
+      getMethodFromBrightSign(url, success, complete, error);
+    });
+  });
+  $('#quickConfigContainer').on('click', '#button-wifi', function() {
+    cancelUpdateToggles();
+    $('#button-wifi').attr('disabled', 'disabled');
+    const url = `toggleWiFi?enable=${!Number(WiFiEnabled)}`;
+    getMethodFromBrightSign(url, function() {
+      setTimeout(function() {
+        getMethodFromBrightSign('backDoor?command=sonos!sall!readglistatus', function() {
+          setTimeout(updateToggles, 10000);
+        });
+      }, 10000);
     });
   });
   $('#quickConfigContainer').on('click', '#button-firmware', function() {
@@ -463,7 +679,7 @@ function menuConfig(us) {
     const $variablesTable = $('#variablesTable');
     let row = varRowSep;
     if (!initialSonosEnableDone) {
-      row += '<tr><td colspan="2" style="color:red;">Sonos device discovery is not yet complete.</td></tr>';
+      row += '<tr class="not-complete"><td colspan="2" style="color:red;">Sonos device discovery is not yet complete.</td></tr>';
       $variablesTable.html(row);
     } else {
       $variablesTable.html('');
@@ -515,6 +731,10 @@ function buildQuickConfigScaffolding(jqSelector) {
             </tr>
         </table>
         <br>
+        <div id="rapidConfig">
+          <input type="checkbox" id="rdmOff">Start with Hijack On (Retail Display Mode Off)
+        </div>
+        <br>
         <button class="control" id="reboot">Reboot without saving</button>&nbsp;&nbsp;&nbsp;&nbsp;
         <button type="submit" class="control" id="quickSubmit">Save values and reboot</button>
         ${localTune}
@@ -558,7 +778,6 @@ function buildQueryForButtonHarness(jqSelector) {
 
 function quickConfig(us) {
   buildQuickConfigScaffolding('#quickConfigContainer');
-  $('#version').text(us.presentationversion || us.presentationVersion);
   $('#longConfig').html('');
   $('#wait').html('');
   $('#quickConfig').show();
@@ -568,6 +787,15 @@ function quickConfig(us) {
 
   $('#quickSubmit,#quickTune').prop('disabled', true);
 
+  if (EnableExperimentalFeatures) {
+    // Enable experimental features
+    for (const langConfig in QuickConfig.languageConfigs) {
+      QuickConfig.languageConfigs[langConfig].Experimental = true;
+    }
+  }
+  if (!EnableRapidConfig) {
+    $('#rapidConfig').hide();
+  }
   const useLocale = false;
   let html = useLocale ? '<table class="lang">' : '';
   let idx = 0;
@@ -620,14 +848,21 @@ function quickConfig(us) {
     if (Query.setup !== 'Local') {
       $.ajax({
         type: "POST",
-        url: `/SetValues`,
+        url: SetValsCmd,
         data: settings.newSettings,
-      })
-        .done(function(data, textStatus, jqXHR) {
+      }).done(function(data, textStatus, jqXHR) {
           doReboot(2000);
         })
         .fail(function(jqHXR, textStatus, errorThrown) {
-          alert(`Failed: ${textStatus}`);
+          $.confirm({
+            title: 'Change submission failure',
+            content: `Changes failed: statusCode=${jqXHR.status} ${textStatus}-${errorThrown}`,
+            buttons: {
+              ok: function () {},
+            },
+            useBootstrap: false,
+            backgroundDismiss: true, // this will just close the modal
+          });
         });
     } else {
       localStorage.vars = JSON.stringify(settings.newSettings);
@@ -886,17 +1121,20 @@ function getSettings() {
     const collat = ((settings.values.collateralDefinition || '') + ' ' + exclusion).trim();
     collatValues.collateralDefinition = collat;
   }
+  const xtraValues = {};
+  if (EnableRapidConfig) {
+    xtraValues.RDMMode = $('#rdmOff').prop('checked') ? 'no' : 'yes';
+  }
   const newSettings = Object.assign({}, QuickConfig.defaultValues,
-                                    {locale: locale}, settings.values, collatValues);
+                                    {locale: locale}, settings.values, collatValues, xtraValues);
   return { newSettings: newSettings, localeIdx: localeIdx, };
 }
 
 function normalConfig(us) {
   $('#QRCodes').show();
   $('#longConfig').show();
-  $('#version').text(us.presentationversion || us.presentationVersion);
 
-  let str='<form id="vars" action="/SetValues" method="post"><table class="shell">';
+  let str=`<form id="vars" action="${SetValsCmd}" method="post"><table class="shell">`;
 
   str += '<tr><td class="shellLabel">Required:</td><td><table class="edit">';
   for (const key in us) {
@@ -1053,6 +1291,10 @@ function normalConfig(us) {
   str += '<br/><br/><center>';
   str += '<button class="control" href="#" onclick="return doSubmit();">Save Values</button>&nbsp;&nbsp;&nbsp;';
   str += '<button class="control" href="#" onclick="return doReboot();">Reboot</button>';
+  if (IsRunningOnBrightSign) {
+    str += '&nbsp;&nbsp;&nbsp;<button class="control" href="#" onclick="return doReauth();">' +
+           'Return to Authentication</button>';
+  }
   str += '</center></form>';
   $('div.varform').html(str);
 
@@ -1089,6 +1331,10 @@ function normalConfig(us) {
       case "promoastart":
       case "promobend":
 
+      case "accesstoken":
+      case "refreshtoken":
+      case "authtoken":
+
       break;
 
       default:
@@ -1103,16 +1349,15 @@ function normalConfig(us) {
 }
 
 function tuneConfig(us) {
-  if (Query.setup !== 'LocalTune') {
-    us.currentdt = '';
-    getTopology();
-  }
+//  if (Query.setup !== 'LocalTune') {
+//    us.currentdt = '';
+//    getTopology();
+//  }
 
   $('#QRCodes').hide();
   $('#longConfig').hide();
-  $('#version').text(us.presentationversion || us.presentationVersion);
 
-  let str='<form id="vars" action="/SetValues" method="post"><table class="shell">';
+  let str=`<form id="vars" action="${SetValsCmd}" method="post"><table class="shell">`;
 
   str += '<tr><td class="shellLabel" style="padding-top:20px">Experience Tuning:</td><td><table class="edit">';
   for (const key in us) {
@@ -1168,7 +1413,7 @@ function tuneConfig(us) {
       default:
         continue;
     }
-    str += '<tr><td class="editDesc">'+desc+`</td><td width="25px">&nbsp;</td><td><div class="ui-input-text"><input class="bs_input ${role}" type="text" name="`+key+'" value="'+htmlEscape(val)+'"/></div></td></tr>';
+    str += '<tr><td class="editDesc">'+desc+`</td><td width="25px">&nbsp;</td><td width="280px"><div class="ui-input-text"><input class="bs_input ${role}" type="text" name="`+key+'" value="'+htmlEscape(val)+'"/></div></td></tr>';
   }
   str += '</table></td></tr>';
 
